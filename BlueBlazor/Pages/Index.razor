@@ -1,79 +1,66 @@
 ﻿@page "/"
-@using BootstrapBlazor.Components;
+@inject WebBluetoothControllerService __WebBluetooth
 
-@if (ShowUI)
-{
-    <span>内置UI</span>
+<div>
+    @if (isAvailable.HasValue)
+    {
+        if (isAvailable == true)
+        {
+            <button @onclick="connect">Connect</button>
+            <button @onclick="disconnect">Disconnect</button>
 
-    <Printer OnResult="OnResult" ShowUI="true" OnError="OnError" OnUpdateStatus="OnUpdateStatus" OnUpdateError="OnError" OnGetDevices="OnGetDevices" />
+            <br />
 
-}
-else
-{
-    <span>
-        基本用法
-    </span>
-    <Printer @ref="printer" OnResult="OnResult" OnError="OnError" OnUpdateStatus="OnUpdateStatus" OnUpdateError="OnError" OnGetDevices="OnGetDevices" />
-    <div @ref="printer.PrinterElement">
-        <button data-action="btnConnect" class="btn btn-outline-primary">ConnectButtonText</button>
-        <button data-action="btnDisconnect" class="btn btn-outline-danger">DisconnectButtonText</button>
-        @*<button data-action="btnReconnect" class="btn btn-outline-secondary">ReconnectButtonText</button>*@
-        <button data-action="tools" class="btn btn-outline-primary" @onclick="printer.Print">PrintButtonText</button>
-    </div>
-}
-<hr />
-<pre>@message</pre>
-<pre style="color:green">@statusmessage</pre>
-<pre style="color:red">@errmessage</pre>
-<p />
-<button class="btn btn-link" @onclick="SwitchUI ">切换界面</button>
+            @if (connectedDevice != null)
+            {
+                <span>@connectedDevice.Id</span>
+
+                <br />
+
+                <span>@connectedDevice.Name</span>
+            }
+        }
+        else
+        {
+            <b>Bluetooth not available!</b>
+        }
+    }
+    else
+    {
+        <i>Loading Bluetooth...</i>
+    }
+</div>
 
 @code {
-    Printer printer { get; set; } = new Printer();
+    private bool? isAvailable = null;
+    private Device connectedDevice;
 
-    /// <summary>
-    /// 显示内置界面
-    /// </summary>
-    bool ShowUI { get; set; } = false;
-
-    private string? message;
-    private string? statusmessage;
-    private string? errmessage;
-
-    private Task OnResult(string message)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        this.message = message;
-        StateHasChanged();
-        return Task.CompletedTask;
+        if (firstRender)
+        {
+            isAvailable = await __WebBluetooth.IsAvailableAsync();
+            StateHasChanged();
+        }
     }
 
-    private Task OnUpdateStatus(string message)
+    private async Task connect()
     {
-        this.statusmessage = message;
+        connectedDevice = await __WebBluetooth.RequestDeviceAsync(new RequestDeviceQuery()
+            {
+                Filters = new List<Filter> {
+                new Filter() {
+                    Services = new List<string> {
+                        "<<SERVICE_ID_OR_NAME>>"
+                    }
+                }
+            }
+            });
         StateHasChanged();
-        return Task.CompletedTask;
     }
-
-    private Task OnError(string message)
+    private async Task disconnect()
     {
-        this.errmessage = message;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    private Task OnGetDevices(List<string>? devices)
-    {
-        this.message = "";
-        if (devices == null || devices!.Count == 0) return Task.CompletedTask;
-        this.message += $"已配对设备{devices.Count}:{Environment.NewLine}";
-        devices.ForEach(a => this.message += $"   {a}{Environment.NewLine}");
-        //this.message = this.message.Replace(Environment.NewLine, "<br/>");
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    public void SwitchUI()
-    {
-        ShowUI = !ShowUI;
+        if (connectedDevice == null) return;
+        await __WebBluetooth.DisconnectAsync(connectedDevice);
     }
 }

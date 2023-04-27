@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="KeudellCoding.Blazor.WebBluetooth" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.16" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.16" PrivateAssets="all" />
-	<PackageReference Include="BootstrapBlazor.Bluetooth" Version="7.0.1" />
   </ItemGroup>
 
   <ItemGroup>
