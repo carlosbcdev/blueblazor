@@ -1,5 +1,6 @@
+using Blazm.Bluetooth;
 using BlueBlazor;
-using KeudellCoding.Blazor.WebBluetooth;
+
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
@@ -10,5 +11,5 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 // Add Bluetooth support
-builder.Services.AddWebBluetooth();
+builder.Services.AddBlazmBluetooth();
 await builder.Build().RunAsync();

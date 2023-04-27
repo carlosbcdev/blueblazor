@@ -1,66 +1,55 @@
-﻿@page "/"
-@inject WebBluetoothControllerService __WebBluetooth
+﻿
+@page "/"
+@*<1. AddNamespace>*@
+@using Blazm.Bluetooth
+@*</1. AddNamespace>*@
+@*<2. AddBluetoothNavigator>*@
+@inject IBluetoothNavigator navigator
+@*</2. AddBluetoothNavigator>*@
 
-<div>
-    @if (isAvailable.HasValue)
-    {
-        if (isAvailable == true)
-        {
-            <button @onclick="connect">Connect</button>
-            <button @onclick="disconnect">Disconnect</button>
 
-            <br />
-
-            @if (connectedDevice != null)
-            {
-                <span>@connectedDevice.Id</span>
-
-                <br />
-
-                <span>@connectedDevice.Name</span>
-            }
-        }
-        else
-        {
-            <b>Bluetooth not available!</b>
-        }
-    }
-    else
-    {
-        <i>Loading Bluetooth...</i>
-    }
-</div>
+<h3>AnderssonScale</h3>
+@*<4. ShowWeight>*@
+@weight
+@*</4. ShowWeight>*@
+<button @onclick="Connect">Connect</button>
 
 @code {
-    private bool? isAvailable = null;
-    private Device connectedDevice;
+    @*<3. AddWeightVariable>*@
+    int weight = 0;
+    @*</3. AddWeightVariable>*@
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected async Task Connect()
     {
-        if (firstRender)
-        {
-            isAvailable = await __WebBluetooth.IsAvailableAsync();
-            StateHasChanged();
-        }
+        var serviceid = "0000ffb0-0000-1000-8000-00805f9b34fb";
+        var characteristics = "0000ffb2-0000-1000-8000-00805f9b34fb";
+
+        @*<5. AddFilter>*@
+        var q = new RequestDeviceQuery();
+        q.Filters.Add(new Filter() { Services = { serviceid } });
+        @*</5. AddFilter>*@
+
+        @*<6. RequestDevice>*@
+        var device = await navigator.RequestDeviceAsync(q);
+        @*</6. RequestDevice>*@
+
+        @*<7. Setup notification>*@
+        await device.SetupNotifyAsync(serviceid, characteristics);
+        device.Notification += Value_Notification;
+        @*</7. Setup notification>*@
     }
 
-    private async Task connect()
+    @*<8. HandleNotification>*@
+    private void Value_Notification(object sender, CharacteristicEventArgs e)
     {
-        connectedDevice = await __WebBluetooth.RequestDeviceAsync(new RequestDeviceQuery()
-            {
-                Filters = new List<Filter> {
-                new Filter() {
-                    Services = new List<string> {
-                        "<<SERVICE_ID_OR_NAME>>"
-                    }
-                }
-            }
-            });
+        var data = e.Value;
+        weight = (256 * data[4]) + data[5];
+        if (data[7] == 1)
+        {
+            weight *= -1;
+        }
+
         StateHasChanged();
     }
-    private async Task disconnect()
-    {
-        if (connectedDevice == null) return;
-        await __WebBluetooth.DisconnectAsync(connectedDevice);
-    }
+    @*</8. HandleNotification>*@
 }
