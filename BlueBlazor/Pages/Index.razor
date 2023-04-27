@@ -1,9 +1,75 @@
 ﻿@page "/"
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
 
-<PageTitle>Index</PageTitle>
+<button @onclick="ConnectToDevice">Connect to Device</button>
 
-<h1>Hello, world!</h1>
+@code {
+    private object bluetoothObject;
 
-Welcome to your new app.
+    private async Task ConnectToDevice()
+    {
+        try
+        {
+            // Check if the browser supports the Web Bluetooth API
+            if (!await JSRuntime.InvokeAsync<bool>("navigator.bluetooth.getAvailability"))
+            {
+                throw new Exception("Web Bluetooth API is not available in this browser.");
+            }
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+            // Request a Bluetooth device
+            var options = new
+            {
+                filters = new[] { new { services = new[] { "<service-uuid>" } } }
+            };
+
+            bluetoothObject = await JSRuntime.InvokeAsync<object>("navigator.bluetooth.requestDevice", JsonSerializer.Serialize(options));
+
+            // Convert the JavaScript object to a strongly-typed C# object
+            var deviceJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", bluetoothObject);
+            var device = JsonSerializer.Deserialize<BluetoothDevice>(deviceJson);
+
+            // Connect to the device and get a GATT server
+            //var serverObject = await JSRuntime.InvokeAsync<object>("Object.getOwnPropertyDescriptor", bluetoothObject, "gatt");
+            //var serverJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", serverObject.Value);
+            //var server = JsonSerializer.Deserialize<GattServer>(serverJson);
+
+            // Connect to the device and get a GATT server
+            var serverObject = await JSRuntime.InvokeAsync<object>("eval", "this.gatt");
+            var serverJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", serverObject);
+            var server = JsonSerializer.Deserialize<GattServer>(serverJson);
+
+
+            await server.Connect(JSRuntime);
+
+            // Do something with the server, such as read/write characteristics
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            // Handle any errors
+        }
+    }
+
+    // Define a strongly-typed class to represent the BluetoothDevice object
+    private class BluetoothDevice
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string[] UUIDs { get; set; }
+        public object Gatt { get; set; }
+    }
+
+    // Define a strongly-typed class to represent the GATT server object
+    private class GattServer
+    {
+        public async Task Connect(IJSRuntime JSRuntime)
+        {
+            await JSRuntime.InvokeAsync<object>("eval", "this.connect();");
+        }
+
+        // Add other methods to interact with the server, such as read/write characteristics
+    }
+}
+
+
