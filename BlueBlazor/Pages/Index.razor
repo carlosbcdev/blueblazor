@@ -2,11 +2,16 @@
 @inject IJSRuntime JSRuntime
 @using System.Text.Json
 
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div>@mensaje</div>
+}
+
 <button @onclick="ConnectToDevice">Connect to Device</button>
 
 @code {
     private object bluetoothObject;
-
+    string mensaje;
     private async Task ConnectToDevice()
     {
         try
@@ -14,6 +19,7 @@
             // Check if the browser supports the Web Bluetooth API
             if (!await JSRuntime.InvokeAsync<bool>("navigator.bluetooth.getAvailability"))
             {
+                mensaje = "Web Bluetooth API is not available in this browser.";
                 throw new Exception("Web Bluetooth API is not available in this browser.");
             }
 
@@ -47,6 +53,7 @@
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
+            mensaje = ex.Message;
             // Handle any errors
         }
     }
