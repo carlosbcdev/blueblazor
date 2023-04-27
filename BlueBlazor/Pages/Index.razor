@@ -1,82 +1,79 @@
 ﻿@page "/"
-@inject IJSRuntime JSRuntime
-@using System.Text.Json
+@using BootstrapBlazor.Components;
 
-@if (!string.IsNullOrEmpty(mensaje))
+@if (ShowUI)
 {
-    <div>@mensaje</div>
-}
+    <span>内置UI</span>
 
-<button @onclick="ConnectToDevice">Connect to Device</button>
+    <Printer OnResult="OnResult" ShowUI="true" OnError="OnError" OnUpdateStatus="OnUpdateStatus" OnUpdateError="OnError" OnGetDevices="OnGetDevices" />
+
+}
+else
+{
+    <span>
+        基本用法
+    </span>
+    <Printer @ref="printer" OnResult="OnResult" OnError="OnError" OnUpdateStatus="OnUpdateStatus" OnUpdateError="OnError" OnGetDevices="OnGetDevices" />
+    <div @ref="printer.PrinterElement">
+        <button data-action="btnConnect" class="btn btn-outline-primary">ConnectButtonText</button>
+        <button data-action="btnDisconnect" class="btn btn-outline-danger">DisconnectButtonText</button>
+        @*<button data-action="btnReconnect" class="btn btn-outline-secondary">ReconnectButtonText</button>*@
+        <button data-action="tools" class="btn btn-outline-primary" @onclick="printer.Print">PrintButtonText</button>
+    </div>
+}
+<hr />
+<pre>@message</pre>
+<pre style="color:green">@statusmessage</pre>
+<pre style="color:red">@errmessage</pre>
+<p />
+<button class="btn btn-link" @onclick="SwitchUI ">切换界面</button>
 
 @code {
-    private object bluetoothObject;
-    string mensaje;
-    private async Task ConnectToDevice()
+    Printer printer { get; set; } = new Printer();
+
+    /// <summary>
+    /// 显示内置界面
+    /// </summary>
+    bool ShowUI { get; set; } = false;
+
+    private string? message;
+    private string? statusmessage;
+    private string? errmessage;
+
+    private Task OnResult(string message)
     {
-        try
-        {
-            // Check if the browser supports the Web Bluetooth API
-            if (!await JSRuntime.InvokeAsync<bool>("navigator.bluetooth.getAvailability"))
-            {
-                mensaje = "Web Bluetooth API is not available in this browser.";
-                throw new Exception("Web Bluetooth API is not available in this browser.");
-            }
-
-            // Request a Bluetooth device
-            var options = new
-            {
-                filters = new[] { new { services = new[] { "<service-uuid>" } } }
-            };
-
-            bluetoothObject = await JSRuntime.InvokeAsync<object>("navigator.bluetooth.requestDevice", JsonSerializer.Serialize(options));
-
-            // Convert the JavaScript object to a strongly-typed C# object
-            var deviceJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", bluetoothObject);
-            var device = JsonSerializer.Deserialize<BluetoothDevice>(deviceJson);
-
-            // Connect to the device and get a GATT server
-            //var serverObject = await JSRuntime.InvokeAsync<object>("Object.getOwnPropertyDescriptor", bluetoothObject, "gatt");
-            //var serverJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", serverObject.Value);
-            //var server = JsonSerializer.Deserialize<GattServer>(serverJson);
-
-            // Connect to the device and get a GATT server
-            var serverObject = await JSRuntime.InvokeAsync<object>("eval", "this.gatt");
-            var serverJson = await JSRuntime.InvokeAsync<string>("JSON.stringify", serverObject);
-            var server = JsonSerializer.Deserialize<GattServer>(serverJson);
-
-
-            await server.Connect(JSRuntime);
-
-            // Do something with the server, such as read/write characteristics
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-            mensaje = ex.Message;
-            // Handle any errors
-        }
+        this.message = message;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    // Define a strongly-typed class to represent the BluetoothDevice object
-    private class BluetoothDevice
+    private Task OnUpdateStatus(string message)
     {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string[] UUIDs { get; set; }
-        public object Gatt { get; set; }
+        this.statusmessage = message;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    // Define a strongly-typed class to represent the GATT server object
-    private class GattServer
+    private Task OnError(string message)
     {
-        public async Task Connect(IJSRuntime JSRuntime)
-        {
-            await JSRuntime.InvokeAsync<object>("eval", "this.connect();");
-        }
+        this.errmessage = message;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
-        // Add other methods to interact with the server, such as read/write characteristics
+    private Task OnGetDevices(List<string>? devices)
+    {
+        this.message = "";
+        if (devices == null || devices!.Count == 0) return Task.CompletedTask;
+        this.message += $"已配对设备{devices.Count}:{Environment.NewLine}";
+        devices.ForEach(a => this.message += $"   {a}{Environment.NewLine}");
+        //this.message = this.message.Replace(Environment.NewLine, "<br/>");
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void SwitchUI()
+    {
+        ShowUI = !ShowUI;
     }
 }
-
-
